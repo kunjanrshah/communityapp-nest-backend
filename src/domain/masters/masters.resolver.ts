@@ -1,4 +1,4 @@
-import { Args, Int, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Query, Resolver } from '@nestjs/graphql';
 import { MastersCountService } from './masters.service';
 import { MastersModel } from './schema/masters.schema';
 import { GetMastersResponseDTO } from './dto/model/get-masters.dto';
@@ -14,10 +14,9 @@ import { MastersCountResponseDTO } from './dto/model/masters-count.dto';
 export class MastersResolver {
   constructor(private readonly mastersService: MastersCountService) {}
 
-  @Public()
   @Query(() => MastersCountResponseDTO)
-  async getMastersCounts(): Promise<MastersCountResponseDTO> {
-    return this.mastersService.getMastersCounts();
+  async getMastersCounts(@Context() context): Promise<MastersCountResponseDTO> {
+    return this.mastersService.getMastersCounts(context.req.user.userId);
   }
 
   @Public()

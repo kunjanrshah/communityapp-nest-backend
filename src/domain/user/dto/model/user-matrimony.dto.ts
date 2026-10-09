@@ -17,7 +17,7 @@ export class UserMatrimonyDTO {
   @IsString()
   birth_time?: string;
 
-  @Field(() => Int) // Required user_id (Must be provided)
+  @Field(() => Int, { nullable: true }) // Birth place (Optional)
   @IsOptional()
   @IsInt()
   birth_place_id?: number;

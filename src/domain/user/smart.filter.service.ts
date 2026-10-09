@@ -13,9 +13,11 @@ export class SmartFilterService {
     const where: Prisma.UserWhereInput = {};
 
     if (filter_by) {
-      where.status = true; // Active users only
+      if (!filter_by.role) where.status = true;
 
       // User Table Filters
+
+      if (filter_by.role) where.role = filter_by.role;
 
       if (filter_by.id) {
         where.id = {
@@ -107,6 +109,9 @@ export class SmartFilterService {
         }),
         ...(filter_by.is_donor !== undefined && {
           is_donor: filter_by.is_donor,
+        }),
+        ...(filter_by.matrimony !== undefined && {
+          matrimony: filter_by.matrimony,
         }),
         ...(filter_by.gotra_id && {
           gotra_id: filter_by.gotra_id,
@@ -261,7 +266,6 @@ export class SmartFilterService {
       if (filter_by.education_id) where.education_id = filter_by.education_id;
     }
 
-    console.log(JSON.stringify(where));
     if (alpha) {
       where.first_name = {
         startsWith: alpha,
@@ -269,53 +273,52 @@ export class SmartFilterService {
       };
     }
 
-    const users = await this.prisma.user.findMany({
-      where,
-      skip: start,
-      take: length,
-      orderBy: [
-        {
-          first_name: orderByVal?.toLowerCase() === 'desc' ? 'desc' : 'asc',
-        },
-      ],
-      include: {
-        userAddress: {
-          include: {
-            states: true,
-            city: true,
+    const [totalRecords, users] = await Promise.all([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        where,
+        skip: start,
+        take: length,
+        orderBy: [
+          { first_name: orderByVal?.toLowerCase() === 'desc' ? 'desc' : 'asc' },
+          { id: 'asc' },
+        ],
+        include: {
+          userAddress: {
+            include: {
+              states: true,
+              city: true,
+            },
           },
-        },
-        userPersonalDetail: {
-          include: {
-            native_place: true,
-            gotra: true,
-            current_activity: true,
+          userPersonalDetail: {
+            include: {
+              native_place: true,
+              gotra: true,
+              current_activity: true,
+            },
           },
-        },
-        userWorkDetail: {
-          include: {
-            businessCategory: true,
-            committee: true,
-            designation: true,
+          userWorkDetail: {
+            include: {
+              businessCategory: true,
+              committee: true,
+              designation: true,
+            },
           },
+          userMatrimony: true,
+          subCast: true,
+          occupation: true,
+          education: true,
+          relation: true,
+          localCommunity: true,
+          subCommunity: true,
+          userLocations: true,
         },
-        userMatrimony: true,
-        subCast: true,
-        occupation: true,
-        education: true,
-        relation: true,
-        localCommunity: true,
-        subCommunity: true,
-        userLocations: true,
-      },
-    });
-
-    console.log('Fetched Users:', users);
+      }),
+    ]);
 
     return {
       members: users ?? [],
-
-      totalRecords: users.length ?? 0,
+      totalRecords,
     };
   }
 }

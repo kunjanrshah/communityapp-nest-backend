@@ -12,7 +12,9 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
+  SUPER_ADMIN
+  SUB_ADMIN
+  LOCAL_ADMIN
   USER
 }
 

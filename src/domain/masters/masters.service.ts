@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   CountListDTO,
@@ -13,7 +13,23 @@ import { StatisticsInputDto } from './dto/statistics-input.dto';
 export class MastersCountService {
   constructor(private prisma: PrismaService) {}
 
-  async getMastersCounts(): Promise<MastersCountResponseDTO> {
+  async getMastersCounts(userId: number): Promise<MastersCountResponseDTO> {
+    const requestingUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { sub_community_id: true },
+    });
+
+    if (!requestingUser) {
+      throw new UnauthorizedException('Authenticated user not found');
+    }
+
+    const matrimonyUserFilter = {
+      is_expired: false,
+      ...(requestingUser.sub_community_id
+        ? { sub_community_id: requestingUser.sub_community_id }
+        : {}),
+    };
+
     const [
       business_categories,
       cities,
@@ -46,8 +62,14 @@ export class MastersCountService {
       this.prisma.subCast.count(),
       this.prisma.subCommunity.count(),
       this.prisma.gotra.count(),
-      this.prisma.userPersonalDetail.count({ where: { matrimony: true } }),
-      this.prisma.user.count({ where: { status: true } }), // Counting users with status=true
+      this.prisma.userPersonalDetail.count({
+        where: {
+          matrimony: true,
+          marital_status: { not: 'Married' },
+          user: { is: matrimonyUserFilter },
+        },
+      }),
+      this.prisma.user.count({ where: { status: false } }),
     ]);
 
     const countList: CountListDTO = {

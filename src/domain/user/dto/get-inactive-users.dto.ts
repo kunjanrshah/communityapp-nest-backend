@@ -1,21 +1,25 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { IsInt } from 'class-validator';
+import { IsInt, IsOptional } from 'class-validator';
 
 @InputType()
 export class GetInactiveUsersInput {
-  @Field(() => Int, { nullable: true })
+  @Field(() => Int, { nullable: true, defaultValue: 0 })
+  @IsOptional()
   @IsInt()
   start?: number;
 
-  @Field(() => Int, { nullable: true })
+  @Field(() => Int, { nullable: true, defaultValue: 25 })
+  @IsOptional()
   @IsInt()
-  limit?: number;
+  length?: number;
 
   @Field(() => Int, { nullable: true })
+  @IsOptional()
   @IsInt()
-  subCommunityId?: number;
+  sub_community_id?: number;
 
   @Field(() => Int, { nullable: true })
+  @IsOptional()
   @IsInt()
-  localCommunityId?: number;
+  local_community_id?: number;
 }

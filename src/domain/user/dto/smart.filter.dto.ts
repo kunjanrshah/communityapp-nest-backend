@@ -1,5 +1,6 @@
 import { IsInt, IsOptional, IsString, Min, Max, IsBoolean } from 'class-validator';
 import { Field, InputType, Int } from '@nestjs/graphql';
+import { Role } from '@prisma/client';
 
 @InputType()
 export class SmartFilterDto {
@@ -7,6 +8,10 @@ export class SmartFilterDto {
   @IsOptional()
   @IsInt()
   id?: number;
+
+  @Field(() => Role, { nullable: true })
+  @IsOptional()
+  role?: Role;
 
   @Field(() => Int, { nullable: true })
   @IsOptional()

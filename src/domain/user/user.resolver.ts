@@ -3,9 +3,10 @@ import { UserDTO } from './dto/model/user.dto';
 import { UserService } from './user.service';
 import { UpsertUserInput } from './dto/user.upsert.dto';
 import { ChangePasswordInput, ChangePasswordResponse } from './dto/user.change-password.dto';
-import { User } from '@prisma/client';
+import { User, Role } from '@prisma/client';
 import { ChangeRoleInput } from './dto/change-role.dto';
 import { GetInactiveUsersInput } from './dto/get-inactive-users.dto';
+import { GetInactiveUsersResponse } from './dto/model/get-inactive-users.response';
 import { StatusChangeInputDto } from './dto/status-change-input.dto';
 import { StatusChangeResponseDto } from './dto/model/status-change-response.dto';
 import { StatusChangeService } from './status-change.service';
@@ -23,6 +24,7 @@ import { InnerLoginInput } from './dto/inner-login.input';
 import { InnerLogoutInput } from './dto/inner-logout.input';
 import { SearchCommitteeUsersInput } from './dto/search-committee-users.input';
 import { SearchCommitteeUsersResponse } from './dto/model/search-committee-users.response';
+import { Roles } from 'src/roles.decorator';
 
 @Resolver(() => UserDTO)
 export class UserResolver {
@@ -32,7 +34,7 @@ export class UserResolver {
   ) {}
 
   // @Query(() => String)
-  // @Roles(Role.ADMIN)
+  // @Roles(Role.SUPER_ADMIN)
   // securedResourceforAdmin(@Context('user') user: UserDTO) {
   //   return 'This is Secured Resource' + JSON.stringify(user);
   // }
@@ -51,8 +53,16 @@ export class UserResolver {
   }
 
   @Mutation(() => UserDTO)
-  async upsertUser(@Args('upsertUserInput') upsertUserInput: UpsertUserInput): Promise<User> {
-    return this.userService.upsertUser(upsertUserInput);
+  async upsertUser(
+    @Args('upsertUserInput') upsertUserInput: UpsertUserInput,
+    @Context() context,
+  ): Promise<User> {
+    const input =
+      context.req.user.role === Role.SUPER_ADMIN
+        ? upsertUserInput
+        : { ...upsertUserInput, role: undefined };
+
+    return this.userService.upsertUser(input);
   }
 
   @Mutation(() => Boolean)
@@ -114,8 +124,10 @@ export class UserResolver {
     return this.userService.getUsersByDate(input);
   }
 
-  @Query(() => [UserDTO])
-  async getInactiveUsers(@Args('input') input: GetInactiveUsersInput) {
+  @Query(() => GetInactiveUsersResponse)
+  async getInactiveUsers(
+    @Args('input') input: GetInactiveUsersInput,
+  ): Promise<GetInactiveUsersResponse> {
     return this.userService.getInactiveUsers(input);
   }
 
@@ -134,14 +146,21 @@ export class UserResolver {
     return this.userService.deleteUser(id);
   }
 
+  @Roles(Role.SUPER_ADMIN)
   @Mutation(() => String)
   async changeRole(@Args('input') input: ChangeRoleInput): Promise<string> {
     return this.userService.changeRole(input);
   }
 
   @Mutation(() => StatusChangeResponseDto)
-  async statusChange(@Args('data') data: StatusChangeInputDto): Promise<StatusChangeResponseDto> {
-    return this.statusChangeService.statusChange(data);
+  async statusChange(
+    @Args('data') data: StatusChangeInputDto,
+    @Context() context,
+  ): Promise<StatusChangeResponseDto> {
+    // Fall back to the authenticated user id when the client does not send `id`
+    // (used for the approval push-notification payload).
+    const actorId = context?.req?.user?.userId;
+    return this.statusChangeService.statusChange(data, actorId);
   }
 
   @Query(() => GetContactListResponse)

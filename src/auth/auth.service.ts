@@ -156,10 +156,14 @@ export class AuthService {
     localCommunityId: number,
     subCommunityId: number,
   ) {
-    let adminTokens = await this.getAdminTokens(localCommunityId, Role.ADMIN);
+    let adminTokens = await this.getAdminTokens(localCommunityId, Role.LOCAL_ADMIN);
 
     if (adminTokens.length === 0) {
-      adminTokens = await this.getAdminTokens(subCommunityId, Role.ADMIN);
+      adminTokens = await this.getAdminTokens(subCommunityId, Role.SUB_ADMIN);
+    }
+
+    if (adminTokens.length === 0) {
+      adminTokens = await this.getAdminTokens(null, Role.SUPER_ADMIN);
     }
 
     if (adminTokens.length > 0) {
@@ -174,13 +178,17 @@ export class AuthService {
   }
 
   private async getAdminTokens(communityId: number | null, role: Role): Promise<string[]> {
+    if (role !== Role.SUPER_ADMIN && communityId === null) return [];
+
+    const where =
+      role === Role.LOCAL_ADMIN
+        ? { role, local_community_id: communityId }
+        : role === Role.SUB_ADMIN
+        ? { role, sub_community_id: communityId }
+        : { role };
+
     const users = await this.prisma.user.findMany({
-      where: {
-        role,
-        ...(communityId
-          ? { OR: [{ local_community_id: communityId }, { sub_community_id: communityId }] }
-          : {}),
-      },
+      where,
       select: { id: true },
     });
 

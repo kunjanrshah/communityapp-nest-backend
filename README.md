@@ -142,3 +142,80 @@ docker-compose up -d
 - Replace `your_password` and `your_database` with your desired credentials and database name.
 
 This setup should allow you to manage your PostgreSQL database with pgAdmin!
+
+---
+
+## Push Notifications (Firebase Cloud Messaging / FCM)
+
+The backend sends push notifications (e.g. _"Please approve X's Request"_ to
+ADMIN users when a new member registers) through Firebase Cloud Messaging using
+the **Firebase Admin SDK**.
+
+### How delivery works (why ngrok is NOT needed)
+
+```
+Android app  --GraphQL (via ngrok/localhost)-->  Nest backend
+Nest backend --FCM HTTP v1 API (outbound)----->  Google FCM servers  -->  Android device
+```
+
+- The backend talks to Google's FCM servers over the **public internet**
+  (outbound request). It does **not** need to be reachable from the internet.
+- The device receives the push over its **own** internet connection.
+- ngrok is only used so the Android app can reach your `localhost` GraphQL API
+  (register / updateDeviceToken). **It has nothing to do with the push itself.**
+
+### Backend configuration (already wired in code)
+
+1. `public/firebase-service-account.json` — the Firebase **service account key**
+   for the project `communityapp-1341c`. Keep it out of public version control.
+2. `FirebaseModule` (`src/firebase/firebase.module.ts`) provides & exports
+   `FirebaseService`, which initialises `firebase-admin` and sends messages.
+3. Optional env var (only if the Android app creates a specific channel):
+
+   ```
+   FCM_ANDROID_CHANNEL_ID=default
+   ```
+
+### Android app configuration (required — otherwise no notification appears)
+
+1. Go to the [Firebase Console](https://console.firebase.google.com/) →
+   project **communityapp-1341c** → **Project settings** → **Your apps**.
+2. Add an **Android app** whose **package name exactly matches** the Android
+   project's `applicationId` (e.g. `com.example.communityapp`).
+3. Download **`google-services.json`** and place it in the Android app module
+   folder (`android/app/google-services.json`).
+4. In `android/build.gradle` add the Google services classpath, and in
+   `android/app/build.gradle` apply the plugin + FCM dependency:
+
+   ```gradle
+   // android/build.gradle
+   classpath 'com.google.gms:google-services:4.4.2'
+
+   // android/app/build.gradle
+   apply plugin: 'com.google.gms.google-services'
+   dependencies {
+     implementation platform('com.google.firebase:firebase-bom:33.5.1')
+     implementation 'com.google.firebase:firebase-messaging'
+   }
+   ```
+
+5. In the app, obtain the **FCM registration token**
+   (`FirebaseMessaging.getInstance().getToken()`) and send it to the backend by
+   calling the `updateDeviceToken` mutation with the token in the
+   **`device-token` HTTP header** (see `src/core/middleware/device-token.middleware.ts`).
+   The backend stores it in the `tkn_devices` table (`types = 1` for Android).
+6. **Android 13+ (API 33+)**: request the runtime permission
+   `POST_NOTIFICATIONS` before relying on notifications.
+7. **Android 8+ (Oreo)**: create a notification channel and, if you set
+   `FCM_ANDROID_CHANNEL_ID`, create a channel with that exact id.
+
+### Common reasons a push doesn't arrive
+
+| Symptom                                                    | Likely cause                                                                                                                                          |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tkn_devices` has no row for the admin/sub-admin users     | The admin users must **log in to the Android app** and call `updateDeviceToken` **before** a new registration happens.                                |
+| Backend log: `No admin device tokens found`                | Same as above — no stored tokens for the target admins.                                                                                               |
+| Backend log: `messaging/registration-token-not-registered` | The token is stale (app reinstall / cleared data). Re-login on the device to refresh it.                                                              |
+| Backend log: `messaging/mismatched-credential`             | `google-services.json` in the Android app is from a **different** Firebase project than the backend's `firebase-service-account.json`.                |
+| `google-services.json` package name mismatch               | The Android `applicationId` must match the package registered in Firebase.                                                                            |
+| App in foreground shows nothing                            | FCM does not auto-display notifications in the foreground; handle it in `onMessageReceived` (or use a `notification` payload for background display). |

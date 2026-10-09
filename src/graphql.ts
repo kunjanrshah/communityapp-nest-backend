@@ -19,7 +19,9 @@ export enum LocationType {
 }
 
 export enum Role {
-  ADMIN = 'ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  SUB_ADMIN = 'SUB_ADMIN',
+  LOCAL_ADMIN = 'LOCAL_ADMIN',
   USER = 'USER',
 }
 
@@ -44,9 +46,9 @@ export interface GetUsersByDateInput {
 
 export interface GetInactiveUsersInput {
   start?: Nullable<number>;
-  limit?: Nullable<number>;
-  subCommunityId?: Nullable<number>;
-  localCommunityId?: Nullable<number>;
+  length?: Nullable<number>;
+  sub_community_id?: Nullable<number>;
+  local_community_id?: Nullable<number>;
 }
 
 export interface GetContactListInput {
@@ -90,6 +92,7 @@ export interface SearchRequestDTO {
 
 export interface SmartFilterDto {
   id?: Nullable<number>;
+  role?: Nullable<Role>;
   last_name_id?: Nullable<number>;
   local_community_id?: Nullable<number>;
   sub_community_id?: Nullable<number>;
@@ -249,6 +252,7 @@ export interface StatusChangeInputDto {
   password?: Nullable<string>;
   relation_id?: Nullable<number>;
   head_id?: Nullable<number>;
+  id?: Nullable<number>;
 }
 
 export interface CreateReminderInput {
@@ -332,7 +336,7 @@ export interface UserMatrimonyDTO {
   id?: Nullable<number>;
   user_id: number;
   birth_time?: Nullable<string>;
-  birth_place_id: number;
+  birth_place_id?: Nullable<number>;
   hobby: string;
   about_me?: Nullable<string>;
   weight?: Nullable<number>;
@@ -446,6 +450,13 @@ export interface UserDTO {
 
 export interface ChangePasswordResponse {
   message: string;
+}
+
+export interface GetInactiveUsersResponse {
+  success: boolean;
+  message?: Nullable<string>;
+  total_records: number;
+  members: UserDTO[];
 }
 
 export interface StatusChangeResponseDto {
@@ -608,7 +619,9 @@ export interface IQuery {
     limit: number,
   ): UserDTO[] | Promise<UserDTO[]>;
   usersByDate(input: GetUsersByDateInput): GetUsersByDateResponse | Promise<GetUsersByDateResponse>;
-  getInactiveUsers(input: GetInactiveUsersInput): UserDTO[] | Promise<UserDTO[]>;
+  getInactiveUsers(
+    input: GetInactiveUsersInput,
+  ): GetInactiveUsersResponse | Promise<GetInactiveUsersResponse>;
   getSharedProfiles(userId: number): UserDTO[] | Promise<UserDTO[]>;
   getSharingProfiles(userId: number): UserDTO[] | Promise<UserDTO[]>;
   getContactList(

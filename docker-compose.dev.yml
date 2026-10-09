@@ -33,7 +33,7 @@ services:
     volumes:
       - .:/usr/src/app   # Maps your host directory to the container
       - /usr/src/app/node_modules   # Avoid conflicts with node_modules
-    command: npm run start:debug
+    command: sh -c "npx prisma generate --schema prisma/schema.prisma && npm run start:debug"
 
   pgadmin:
     image: dpage/pgadmin4

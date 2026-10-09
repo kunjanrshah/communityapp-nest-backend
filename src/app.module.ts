@@ -11,7 +11,7 @@ import { DomainModule } from './domain/domain.module';
 import dbConfig from './config/database';
 import { NotificationService } from './notification/notification.service';
 import { NotificationResolver } from './notification/notification.resolver';
-import { FirebaseService } from './firebase/firebase.service';
+import { FirebaseModule } from './firebase/firebase.module';
 
 // Use NODE_ENV to load appropriate file
 // NODE_ENV=dev npm run start:dev
@@ -25,6 +25,7 @@ import { FirebaseService } from './firebase/firebase.service';
     }),
     DomainModule,
     AuthModule,
+    FirebaseModule,
     GraphQLModule.forRoot({
       driver: ApolloDriver,
       playground: true,
@@ -58,12 +59,6 @@ import { FirebaseService } from './firebase/firebase.service';
     }),
   ],
   controllers: [AppController],
-  providers: [
-    AppService,
-    PrismaService,
-    NotificationService,
-    NotificationResolver,
-    FirebaseService,
-  ],
+  providers: [AppService, PrismaService, NotificationService, NotificationResolver],
 })
 export class AppModule {}

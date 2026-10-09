@@ -36,7 +36,7 @@ type UserMatrimonyDTO {
   id: Int
   user_id: Int!
   birth_time: String
-  birth_place_id: Int!
+  birth_place_id: Int
   hobby: String!
   about_me: String
   weight: Float
@@ -160,12 +160,25 @@ type UserDTO {
 }
 
 enum Role {
-  ADMIN
+  SUPER_ADMIN
+  SUB_ADMIN
+  LOCAL_ADMIN
   USER
 }
 
 type ChangePasswordResponse {
   message: String!
+}
+
+type GetInactiveUsersResponse {
+  success: Boolean!
+  message: String
+
+  """
+  Total number of inactive users matching the filter (before pagination).
+  """
+  total_records: Int!
+  members: [UserDTO!]!
 }
 
 type StatusChangeResponseDto {
@@ -322,7 +335,7 @@ type Query {
   searchCommitteeUsers(input: SearchCommitteeUsersInput!): SearchCommitteeUsersResponse!
   usersByDateRange(fromDate: String!, toDate: String!, page: Float!, limit: Float!): [UserDTO!]!
   usersByDate(input: GetUsersByDateInput!): GetUsersByDateResponse!
-  getInactiveUsers(input: GetInactiveUsersInput!): [UserDTO!]!
+  getInactiveUsers(input: GetInactiveUsersInput!): GetInactiveUsersResponse!
   getSharedProfiles(userId: Int!): [UserDTO!]!
   getSharingProfiles(userId: Int!): [UserDTO!]!
   getContactList(input: GetContactListInput!): GetContactListResponse!
@@ -373,10 +386,10 @@ input GetUsersByDateInput {
 }
 
 input GetInactiveUsersInput {
-  start: Int
-  limit: Int
-  subCommunityId: Int
-  localCommunityId: Int
+  start: Int = 0
+  length: Int = 25
+  sub_community_id: Int
+  local_community_id: Int
 }
 
 input GetContactListInput {
@@ -427,6 +440,7 @@ input SearchRequestDTO {
 
 input SmartFilterDto {
   id: Int
+  role: Role
   last_name_id: Int
   local_community_id: Int
   sub_community_id: Int
@@ -611,6 +625,7 @@ input StatusChangeInputDto {
   password: String
   relation_id: Int
   head_id: Int
+  id: Int
 }
 
 input CreateReminderInput {

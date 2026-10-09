@@ -4,6 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import { ChangeRoleInput } from './dto/change-role.dto';
 import { GetInactiveUsersInput } from './dto/get-inactive-users.dto';
+import { GetInactiveUsersResponse } from './dto/model/get-inactive-users.response';
 import { GetContactListInput } from './dto/get-contact-list.input';
 import { GetContactListResponse } from './dto/model/get-contact-list.response';
 import { SearchByCityInput } from './dto/search-by-city.input';
@@ -990,20 +991,42 @@ export class UserService {
     }
   }
 
-  async getInactiveUsers(input: GetInactiveUsersInput) {
-    const { start, limit, subCommunityId, localCommunityId } = input;
+  /**
+   * Mirrors the legacy REST "GetInactiveUsers" endpoint
+   * (API_model::getInactiveUsers / getInactiveUsersCount).
+   *
+   * Returns users that are inactive (status != 1), not deleted and, when
+   * provided, filtered by sub_community_id (which takes precedence) or
+   * local_community_id. `member_count` is the number of non-expired family
+   * members headed by each returned user. `total_records` is the total number
+   * of matching users before pagination.
+   */
+  async getInactiveUsers(input: GetInactiveUsersInput): Promise<GetInactiveUsersResponse> {
+    const { start = 0, length = 25, sub_community_id, local_community_id } = input;
 
-    return this.prisma.user.findMany({
-      where: {
-        status: false, // status!=1 (false means inactive)
-        deleted: false,
-        OR: [
-          subCommunityId ? { sub_community_id: subCommunityId } : {},
-          localCommunityId ? { local_community_id: localCommunityId } : {},
-        ],
-      },
-      skip: start || 0,
-      take: limit || 10,
+    // Legacy filter precedence: sub_community_id wins over local_community_id.
+    const where: Prisma.UserWhereInput = {
+      status: false, // legacy: status != 1 (false => inactive)
+      deleted: false,
+    };
+
+    if (sub_community_id) {
+      where.sub_community_id = sub_community_id;
+    } else if (local_community_id) {
+      where.local_community_id = local_community_id;
+    }
+
+    const total_records = await this.prisma.user.count({ where });
+
+    if (!total_records) {
+      return { success: false, message: 'Data not found', total_records: 0, members: [] };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      skip: start >= 0 ? start : 0,
+      take: length > 0 ? length : 25,
+      orderBy: { first_name: 'asc' },
       include: {
         userAddress: true,
         userMatrimony: true,
@@ -1011,6 +1034,31 @@ export class UserService {
         userWorkDetail: true,
       },
     });
+
+    // Legacy `member_count` sub-select: users whose head_id points at the
+    // returned user and who are not expired.
+    const userIds = users.map((user) => user.id);
+    const memberCounts = new Map<number, number>();
+    if (userIds.length) {
+      const counts = await this.prisma.user.groupBy({
+        by: ['head_id'],
+        where: { head_id: { in: userIds }, is_expired: false },
+        _count: { head_id: true },
+      });
+      for (const c of counts) memberCounts.set(c.head_id, c._count.head_id);
+    }
+
+    const members = users.map((user) => ({
+      ...user,
+      member_count: memberCounts.get(user.id) ?? 0,
+    }));
+
+    return {
+      success: true,
+      message: 'Data retrived successfully.',
+      total_records,
+      members: members as unknown as GetInactiveUsersResponse['members'],
+    };
   }
 
   async getSharedProfiles(userId: number) {

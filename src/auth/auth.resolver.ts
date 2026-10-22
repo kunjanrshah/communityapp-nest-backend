@@ -1,7 +1,7 @@
 import { Resolver, Mutation, Args, Query, Context } from '@nestjs/graphql';
 import { AuthService } from './auth.service';
 import { LoginInput } from 'src/auth/dto/login.input';
-import { AuthResponse, RegisterInput } from 'src/auth/dto/register.input';
+import { AuthResponse, LoginResponse, RegisterInput } from 'src/auth/dto/register.input';
 import { Public } from 'src/public.decorator';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EmailService } from './email.service';
@@ -18,7 +18,7 @@ export class AuthResolver {
     private readonly authService: AuthService,
     private prisma: PrismaService,
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   @Public()
   @Mutation(() => AuthResponse)
@@ -27,7 +27,7 @@ export class AuthResolver {
   }
 
   @Public()
-  @Mutation(() => AuthResponse)
+  @Mutation(() => LoginResponse)
   async login(@Args('LoginInput') loginInput: LoginInput) {
     return this.authService.login(loginInput.mobile, loginInput.password);
   }

@@ -172,8 +172,14 @@ export class UserDTO {
   @Field(() => String, { nullable: true })
   designation?: string;
 
+  @Field(() => Int, { nullable: true })
+  designation_id?: number;
+
   @Field(() => String, { nullable: true })
   committee?: string;
+
+  @Field(() => Int, { nullable: true })
+  committee_id?: number;
 
   @Field(() => String, { nullable: true })
   education?: string;

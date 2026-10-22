@@ -2,10 +2,124 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type LoginMemberDTO {
+  access_token: String
+  refresh_token: String
+  about_me: String
+  address: String
+  area: String
+  birth_date: String
+  birth_place: String
+  birth_time: String
+  blood_group: String
+  business_address: String
+  business_category: String
+  business_category_id: String
+  business_logo: String
+  business_sub_category: String
+  business_sub_category_id: String
+  city: String
+  city_id: String
+  committee: String
+  committee_id: String
+  company_name: String
+  created_dt: String
+  current_activity: String
+  current_activity_id: String
+  designation: String
+  designation_id: String
+  distance: String
+  distinct_id: String
+  education: String
+  education_id: String
+  email_address: String
+  expectation: String
+  expire_date: String
+  facebook_profile: String
+  father_name: String
+  first_name: String
+  gender: String
+  gotra: String
+  gotra_id: String
+  head_id: String
+  head_name: String
+  head_sub_cast_id: String
+  height: String
+  hobby: String
+  home_lat: String
+  home_lng: String
+  is_donor: String
+  is_expired: String
+  isImportant: Boolean
+  is_location_enable: String
+  is_mangal: String
+  is_rented: String
+  is_shani: String
+  is_spect: String
+  last_login: String
+  last_name: String
+  local_address: String
+  local_community: String
+  local_community_id: String
+  login_status: Int
+  marital_status: String
+  marriage_date: String
+  matched: String
+  matrimony: String
+  member_code: String
+  member_count: Int
+  mosaad_id: String
+  mossad: String
+  mother_name: String
+  native: String
+  native_place_id: String
+  nearBy: String
+  occupation: String
+  occupation_id: String
+  office_lat: String
+  office_lng: String
+  online_status: Int
+  password: String
+  phone: String
+  pincode: String
+  plain_password: String
+  profile_completed: String
+  profile_password: String
+  profile_percentage: String
+  profile_pic: String
+  region: String
+  relation: String
+  relation_id: String
+  sharing_id: String
+  state: String
+  state_id: String
+  status: String
+  sub_cast_id: String
+  sub_community: String
+  sub_community_id: String
+  updated_dt: String
+  user_lat: String
+  user_lng: String
+  website: String
+  weight: String
+  work_details: String
+  reminder_birth_date: String
+  reminder_marriage_date: String
+  reminder_expire_date: String
+  matches: [String!]
+}
+
 type AuthResponse {
   accessToken: String!
   refreshToken: String!
   message: String!
+}
+
+type LoginResponse {
+  success: Boolean!
+  OTP: String
+  message: String!
+  data: LoginMemberDTO!
 }
 
 type AppVersionDto {
@@ -148,7 +262,9 @@ type UserDTO {
   local_community: String
   relation: String
   designation: String
+  designation_id: Int
   committee: String
+  committee_id: Int
   education: String
   occupation: String
   current_activity: String
@@ -265,6 +381,7 @@ type CityResponseDto {
 
 type StatisticsDataDto {
   TotalFamily: Int!
+  TotalVillages: Int
   TotalMembers: Int!
   TotalMale: Int!
   TotalFemale: Int!
@@ -274,9 +391,14 @@ type StatisticsDataDto {
   TotalInterestedFemale: Int!
 }
 
+type StatisticsCityDto {
+  city_id: Int!
+}
+
 type StatisticsResponseDto {
   success: Boolean!
   data: StatisticsDataDto!
+  cities: [StatisticsCityDto!]!
 }
 
 type CountListDTO {
@@ -372,6 +494,17 @@ input SearchCommitteeUsersInput {
   filterBy: String
   committeeId: Int
   designationId: Int
+  filter_by: SearchCommitteeUsersFilterInput
+}
+
+input SearchCommitteeUsersFilterInput {
+  str_search: String
+  local_community_id: Int
+  sub_community_id: Int
+  committee_id: Int
+  designation_id: Int
+  start_date: String
+  end_date: String
 }
 
 input GetUsersByDateInput {
@@ -521,7 +654,7 @@ type Mutation {
   uploadFile(file: Upload!, user_id: Int!): UploadModel!
   deleteUserFile(id: Int!, user_id: Int!): UploadModel!
   register(RegisterInput: RegisterInput!): AuthResponse!
-  login(LoginInput: LoginInput!): AuthResponse!
+  login(LoginInput: LoginInput!): LoginResponse!
   refreshToken(token: String!): AuthResponse!
   updateDeviceToken: Boolean!
   forgotPassword(forgotPasswordInput: ForgotPasswordInput!): String!

@@ -11,13 +11,15 @@ export class UserWorkDetailDTO {
   @IsInt()
   user_id: number;
 
-  @Field(() => Int)
+  @Field(() => Int, { nullable: true })
+  @IsOptional()
   @IsInt()
-  committee_id: number;
+  committee_id?: number;
 
-  @Field(() => Int)
+  @Field(() => Int, { nullable: true })
+  @IsOptional()
   @IsInt()
-  designation_id: number;
+  designation_id?: number;
 
   @Field(() => Int, { nullable: true })
   @IsOptional()
@@ -48,4 +50,12 @@ export class UserWorkDetailDTO {
   @IsOptional()
   @IsString()
   work_details?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  start_date?: Date;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  end_date?: Date;
 }

@@ -7,6 +7,10 @@ export class StatisticsDataDto {
   @IsInt()
   TotalFamily: number;
 
+  @Field(() => Int, { nullable: true })
+  @IsInt()
+  TotalVillages?: number;
+
   @Field(() => Int)
   @IsInt()
   TotalMembers: number;
@@ -37,10 +41,20 @@ export class StatisticsDataDto {
 }
 
 @ObjectType()
+export class StatisticsCityDto {
+  @Field(() => Int)
+  @IsInt()
+  city_id: number;
+}
+
+@ObjectType()
 export class StatisticsResponseDto {
   @Field()
   success: boolean;
 
   @Field(() => StatisticsDataDto)
   data: StatisticsDataDto;
+
+  @Field(() => [StatisticsCityDto])
+  cities: StatisticsCityDto[];
 }

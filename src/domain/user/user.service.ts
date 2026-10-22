@@ -1,6 +1,11 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UpsertUserInput } from './dto/user.upsert.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { ChangeRoleInput } from './dto/change-role.dto';
 import { GetInactiveUsersInput } from './dto/get-inactive-users.dto';
@@ -57,7 +62,7 @@ type UserRowWithRelations = {
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async changePassword(userId: number, currentPassword: string, newPassword: string) {
     const user = await this.prisma.user.findUnique({
@@ -545,16 +550,40 @@ export class UserService {
   async searchCommitteeUsers(
     input: SearchCommitteeUsersInput,
   ): Promise<SearchCommitteeUsersResponse> {
-    const { start = 0, length = 25, filterBy, committeeId, designationId } = input;
+    const {
+      start = 0,
+      length = 25,
+      filterBy,
+      committeeId,
+      designationId,
+      filter_by: filterByRest,
+    } = input;
 
-    const where = this.buildCommitteeUsersWhere(filterBy, committeeId, designationId);
+    if (
+      filterByRest?.start_date &&
+      filterByRest?.end_date &&
+      filterByRest.start_date > filterByRest.end_date
+    ) {
+      throw new BadRequestException('start_date must be earlier than or equal to end_date');
+    }
+
+    const where = this.buildCommitteeUsersWhere({
+      filterBy,
+      firstName: filterByRest?.str_search,
+      committeeId: filterByRest?.committee_id ?? committeeId,
+      designationId: filterByRest?.designation_id ?? designationId,
+      localCommunityId: filterByRest?.local_community_id,
+      subCommunityId: filterByRest?.sub_community_id,
+      startDate: filterByRest?.start_date,
+      endDate: filterByRest?.end_date,
+    });
 
     const totalRecords = await this.prisma.user.count({ where });
 
     const users = await this.prisma.user.findMany({
       where,
-      skip: start >= 0 ? start : 0,
-      take: length > 0 ? length : 25,
+      skip: length === -1 ? 0 : Math.max(0, start),
+      take: length === -1 ? 25 : Math.max(1, length),
       include: this.familyInclude,
       orderBy: { id: 'desc' }, // legacy data-table order: id DESC
     });
@@ -562,44 +591,85 @@ export class UserService {
     const enriched = users.map((user) => this.enrichFamilyMember(user, users));
 
     return {
-      success: true,
-      message: 'Data Retrieved Successfully',
+      success: users.length > 0,
+      message: users.length > 0 ? 'Data Retrieved Successfully' : 'No user data found',
       total_records: totalRecords,
       members: enriched as unknown as SearchCommitteeUsersResponse['members'],
     };
   }
 
   private buildCommitteeUsersWhere(
-    filterBy?: string,
-    committeeId?: number,
-    designationId?: number,
+    filters: {
+      filterBy?: string;
+      firstName?: string;
+      committeeId?: number;
+      designationId?: number;
+      localCommunityId?: number;
+      subCommunityId?: number;
+      startDate?: string;
+      endDate?: string;
+    },
   ): Prisma.UserWhereInput {
-    const committeeFilters: Prisma.UserWorkDetailWhereInput[] = [];
-    if (committeeId) committeeFilters.push({ committee_id: committeeId });
-    if (designationId) committeeFilters.push({ designation_id: designationId });
-    if (!committeeId && !designationId) {
-      committeeFilters.push({
-        OR: [{ committee_id: { not: null } }, { designation_id: { not: null } }],
-      });
-    }
+    const {
+      filterBy,
+      firstName,
+      committeeId,
+      designationId,
+      localCommunityId,
+      subCommunityId,
+      startDate,
+      endDate,
+    } = filters;
+    const startDateBoundary = startDate ? new Date(`${startDate}-01T00:00:00.000Z`) : undefined;
+    const endDateExclusive = endDate
+      ? (() => {
+        const [year, month] = endDate.split('-').map(Number);
+        return new Date(Date.UTC(year, month, 1));
+      })()
+      : undefined;
 
     const where: Prisma.UserWhereInput = {
       status: true,
       deleted: false,
-      userWorkDetail: { is: { AND: committeeFilters } },
+      ...(localCommunityId && { local_community_id: localCommunityId }),
+      ...(subCommunityId && { sub_community_id: subCommunityId }),
+      userWorkDetail: {
+        is: {
+          ...(committeeId && { committee_id: committeeId }),
+          ...(designationId && { designation_id: designationId }),
+          ...(startDateBoundary && { start_date: { gte: startDateBoundary } }),
+          ...(endDateExclusive && { end_date: { lt: endDateExclusive } }),
+          ...(!committeeId && !designationId && {
+            OR: [{ committee_id: { not: null } }, { designation_id: { not: null } }],
+          }),
+        },
+      },
     };
 
+    if (firstName) {
+      where.first_name = { contains: firstName, mode: 'insensitive' };
+    }
+
     if (filterBy) {
-      where.OR = [
+      const searchConditions: Prisma.UserWhereInput[] = [
         { member_code: { contains: filterBy, mode: 'insensitive' } },
         { first_name: { contains: filterBy, mode: 'insensitive' } },
+        { subCast: { name: { contains: filterBy, mode: 'insensitive' } } },
         { mobile: { contains: filterBy, mode: 'insensitive' } },
         { email: { contains: filterBy, mode: 'insensitive' } },
+        { userAddress: { area: { contains: filterBy, mode: 'insensitive' } } },
         { userAddress: { city: { name: { contains: filterBy, mode: 'insensitive' } } } },
         { userAddress: { states: { name: { contains: filterBy, mode: 'insensitive' } } } },
-        { userWorkDetail: { committee: { name: { contains: filterBy, mode: 'insensitive' } } } },
-        { userWorkDetail: { designation: { name: { contains: filterBy, mode: 'insensitive' } } } },
       ];
+
+      if (/^\d+$/.test(filterBy)) {
+        searchConditions.push({ id: Number(filterBy) });
+      }
+      if (Object.values(Role).includes(filterBy as Role)) {
+        searchConditions.push({ role: filterBy as Role });
+      }
+
+      where.OR = searchConditions;
     }
 
     return where;
@@ -645,7 +715,9 @@ export class UserService {
     u.relation = row.relation?.name ?? '';
     u.relation_name = row.relation?.name ?? '';
     u.designation = row.userWorkDetail?.designation?.name ?? '';
+    u.designation_id = row.userWorkDetail?.designation_id ?? null;
     u.committee = row.userWorkDetail?.committee?.name ?? '';
+    u.committee_id = row.userWorkDetail?.committee_id ?? null;
     u.education = row.education?.name ?? '';
     u.occupation = row.occupation?.name ?? '';
     u.current_activity = row.userPersonalDetail?.current_activity?.name ?? '';

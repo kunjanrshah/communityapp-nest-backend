@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   CountListDTO,
@@ -6,12 +7,12 @@ import {
   UserCountsDTO,
 } from './dto/model/masters-count.dto';
 import { GetMastersResponseDTO } from './dto/model/get-masters.dto';
-import { StatisticsResponseDto } from './dto/model/statistics-response.dto';
+import { StatisticsCityDto, StatisticsResponseDto } from './dto/model/statistics-response.dto';
 import { StatisticsInputDto } from './dto/statistics-input.dto';
 
 @Injectable()
 export class MastersCountService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getMastersCounts(userId: number): Promise<MastersCountResponseDTO> {
     const requestingUser = await this.prisma.user.findUnique({
@@ -270,23 +271,25 @@ export class MastersCountService {
   async getStatistics(input: StatisticsInputDto): Promise<StatisticsResponseDto> {
     const { cityId, subCommunityId, localCommunityId } = input;
 
-    // Common filter conditions
-    const baseFilter = {
-      is_expired: false,
+    const communityFilter = {
       ...(subCommunityId && { sub_community_id: subCommunityId }),
       ...(localCommunityId && { local_community_id: localCommunityId }),
-      ...(cityId && { userAddress: { city_id: cityId } }), // Use city_id from UserAddress relation
+    };
+    const baseFilter: Prisma.UserWhereInput = {
+      is_expired: false,
+      ...communityFilter,
+      ...(cityId && { userAddress: { is: { city_id: cityId } } }),
     };
 
     // Get current year
     const currentYear = new Date().getFullYear();
 
     // Define birth date conditions
-    const boyDate = new Date(`${currentYear - 21}-01-01`);
-    const girlDate = new Date(`${currentYear - 18}-01-01`);
+    const boyDate = new Date(currentYear - 21, 0, 1);
+    const girlDate = new Date(currentYear - 18, 0, 1);
 
-    // Fetch statistics using Prisma queries
     const [
+      cityIds,
       totalFamily,
       totalMembers,
       totalMale,
@@ -296,6 +299,11 @@ export class MastersCountService {
       totalInterestedMale,
       totalInterestedFemale,
     ] = await Promise.all([
+      this.prisma.userAddress.findMany({
+        where: { user: { is: { is_expired: false, ...communityFilter } } },
+        distinct: ['city_id'],
+        select: { city_id: true },
+      }),
       this.prisma.user.count({ where: { ...baseFilter, head_id: 0 } }),
       this.prisma.user.count({ where: baseFilter }),
       this.prisma.user.count({ where: { ...baseFilter, gender: true } }),
@@ -304,28 +312,32 @@ export class MastersCountService {
         where: {
           ...baseFilter,
           gender: true,
-          userPersonalDetail: { marital_status: 'Unmarried', birth_date: { gte: boyDate } },
+          userPersonalDetail: {
+            is: { marital_status: 'Unmarried', birth_date: { gte: boyDate } },
+          },
         },
       }),
       this.prisma.user.count({
         where: {
           ...baseFilter,
           gender: false,
-          userPersonalDetail: { marital_status: 'Unmarried', birth_date: { gte: girlDate } },
+          userPersonalDetail: {
+            is: { marital_status: 'Unmarried', birth_date: { gte: girlDate } },
+          },
         },
       }),
       this.prisma.user.count({
         where: {
           ...baseFilter,
           gender: true,
-          userPersonalDetail: { matrimony: true },
+          userPersonalDetail: { is: { matrimony: true } },
         },
       }),
       this.prisma.user.count({
         where: {
           ...baseFilter,
           gender: false,
-          userPersonalDetail: { matrimony: true },
+          userPersonalDetail: { is: { matrimony: true } },
         },
       }),
     ]);
@@ -333,6 +345,7 @@ export class MastersCountService {
     return {
       success: true,
       data: {
+        ...(cityId ? {} : { TotalVillages: cityIds.length }),
         TotalFamily: totalFamily,
         TotalMembers: totalMembers,
         TotalMale: totalMale,
@@ -342,6 +355,7 @@ export class MastersCountService {
         TotalInterestedMale: totalInterestedMale,
         TotalInterestedFemale: totalInterestedFemale,
       },
+      cities: cityIds.map((city) => ({ city_id: city.city_id } as StatisticsCityDto)),
     };
   }
 }

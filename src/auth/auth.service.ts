@@ -20,7 +20,7 @@ interface Notification {
 
 @Injectable({ scope: Scope.REQUEST })
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwtService: JwtService) {}
+  constructor(private prisma: PrismaService, private jwtService: JwtService) { }
 
   async register(input: RegisterInput) {
     try {
@@ -113,8 +113,8 @@ export class AuthService {
         error instanceof Error
           ? error.message
           : typeof error === 'string'
-          ? error
-          : 'An unexpected error occurred during registration';
+            ? error
+            : 'An unexpected error occurred during registration';
       throw new InternalServerErrorException(message);
     }
   }
@@ -128,8 +128,8 @@ export class AuthService {
         err instanceof Error
           ? err.message
           : typeof err === 'string'
-          ? err
-          : 'An unexpected error occurred';
+            ? err
+            : 'An unexpected error occurred';
       throw new UnauthorizedException('Invalid refresh token', message);
     }
   }
@@ -145,8 +145,168 @@ export class AuthService {
   async login(mobile: string, password: string) {
     const user = await this.validateUser(mobile, password);
 
-    // Generate both access & refresh tokens
-    return this.generateTokens(user.id, user.mobile, user.role);
+    const [profile, memberCount] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: user.id },
+        include: {
+          userAddress: { include: { city: true, states: true } },
+          userPersonalDetail: {
+            include: { native_place: true, gotra: true, current_activity: true },
+          },
+          userWorkDetail: {
+            include: { businessCategory: true, committee: true, designation: true },
+          },
+          userMatrimony: { include: { birth_place: true } },
+          subCast: true,
+          occupation: true,
+          education: true,
+          relation: true,
+          localCommunity: true,
+          subCommunity: true,
+          userLocations: true,
+        },
+      }),
+      this.prisma.user.count({ where: { head_id: user.id } }),
+    ]);
+
+    if (!profile) {
+      throw new UnauthorizedException('User profile not found');
+    }
+
+    const personal = profile.userPersonalDetail;
+    const address = profile.userAddress;
+    const work = profile.userWorkDetail;
+    const matrimony = profile.userMatrimony;
+    const locations = profile.userLocations;
+    const head =
+      profile.head_id === 0
+        ? profile
+        : await this.prisma.user.findUnique({
+          where: { id: profile.head_id },
+          select: { first_name: true, last_name_id: true },
+        });
+    const locationFor = (type: string) =>
+      locations.find((location) => location.location_type.toLowerCase() === type);
+    const homeLocation = locationFor('home');
+    const officeLocation = locationFor('office');
+    const currentLocation = locationFor('user');
+    const legacyBoolean = (value: boolean | null | undefined) => (value ? '1' : '0');
+    const legacyId = (value: number | null | undefined) => String(value ?? 0);
+    const legacyDate = (value: Date | null | undefined) => value?.toISOString() ?? '';
+
+    const tokens = this.generateTokens(user.id, user.mobile, user.role);
+
+    return {
+      success: true,
+      OTP: '',
+      message: tokens.message,
+      data: {
+        access_token: tokens.accessToken,
+        refresh_token: tokens.refreshToken,
+        about_me: matrimony?.about_me ?? '',
+        address: address?.address ?? '',
+        area: address?.area ?? '',
+        birth_date: legacyDate(personal?.birth_date),
+        birth_place: matrimony?.birth_place?.name ?? '',
+        birth_time: legacyDate(matrimony?.birth_time),
+        blood_group: personal?.blood_group ?? '',
+        business_address: work?.business_address ?? '',
+        business_category: work?.businessCategory?.name ?? '',
+        business_category_id: legacyId(work?.business_category_id),
+        business_logo: work?.business_logo ?? '',
+        business_sub_category: '',
+        business_sub_category_id: '0',
+        city: address?.city?.name ?? '',
+        city_id: legacyId(address?.city_id),
+        committee: work?.committee?.name ?? '',
+        committee_id: legacyId(work?.committee_id),
+        company_name: work?.company_name ?? '',
+        created_dt: '0',
+        current_activity: personal?.current_activity?.name ?? '',
+        current_activity_id: legacyId(personal?.current_activity_id),
+        designation: work?.designation?.name ?? '',
+        designation_id: legacyId(work?.designation_id),
+        distance: '',
+        distinct_id: '',
+        education: profile.education?.name ?? '',
+        education_id: legacyId(profile.education_id),
+        email_address: profile.email ?? '',
+        expectation: matrimony?.expectation ?? '',
+        expire_date: legacyDate(profile.expire_date),
+        facebook_profile: matrimony?.facebook_profile ?? '',
+        father_name: profile.father_name ?? '',
+        first_name: profile.first_name,
+        gender: legacyBoolean(profile.gender),
+        gotra: personal?.gotra?.name ?? '',
+        gotra_id: legacyId(personal?.gotra_id),
+        head_id: legacyId(profile.head_id),
+        head_name: head?.first_name ?? '',
+        head_sub_cast_id: legacyId(head?.last_name_id),
+        height: matrimony?.height?.toString() ?? '',
+        hobby: matrimony?.hobby ?? '',
+        home_lat: homeLocation?.latitude.toString() ?? '',
+        home_lng: homeLocation?.longitude.toString() ?? '',
+        is_donor: legacyBoolean(personal?.is_donor),
+        is_expired: legacyBoolean(profile.is_expired),
+        isImportant: false,
+        is_location_enable: legacyBoolean(locations.some((location) => location.is_location_enable)),
+        is_mangal: legacyBoolean(matrimony?.is_mangal),
+        is_rented: legacyBoolean(address?.addr_type === 'RENTED'),
+        is_shani: legacyBoolean(matrimony?.is_shani),
+        is_spect: legacyBoolean(matrimony?.is_spect),
+        last_login: legacyDate(profile.last_login),
+        last_name: profile.subCast?.name ?? '',
+        local_address: address?.local_address ?? '',
+        local_community: profile.localCommunity?.name ?? '',
+        local_community_id: legacyId(profile.local_community_id),
+        login_status: Number(legacyBoolean(profile.login_status)),
+        marital_status: personal?.marital_status ?? '',
+        marriage_date: legacyDate(personal?.marriage_date),
+        matched: '',
+        matrimony: personal?.matrimony ? 'YES' : 'NO',
+        member_code: profile.member_code ?? '',
+        member_count: memberCount,
+        mosaad_id: legacyId(address?.mosaad_id),
+        mossad: '',
+        mother_name: profile.mother_name ?? '',
+        native: personal?.native_place?.name ?? '',
+        native_place_id: legacyId(personal?.native_place_id),
+        nearBy: '',
+        occupation: profile.occupation?.name ?? '',
+        occupation_id: legacyId(profile.occupation_id),
+        office_lat: officeLocation?.latitude.toString() ?? '',
+        office_lng: officeLocation?.longitude.toString() ?? '',
+        online_status: 0,
+        password: '',
+        phone: profile.phone ?? '',
+        pincode: address?.pincode ?? '',
+        plain_password: '',
+        profile_completed: `${profile.profile_percent}%`,
+        profile_password: '',
+        profile_percentage: profile.profile_percent.toString(),
+        profile_pic: profile.profile_pic ?? '',
+        region: profile.region ?? '',
+        relation: profile.relation?.name ?? '',
+        relation_id: legacyId(profile.relation_id),
+        sharing_id: currentLocation?.sharing_id ?? '0',
+        state: address?.states?.name ?? '',
+        state_id: legacyId(address?.states_id),
+        status: legacyBoolean(profile.status),
+        sub_cast_id: legacyId(profile.last_name_id),
+        sub_community: profile.subCommunity?.name ?? '',
+        sub_community_id: legacyId(profile.sub_community_id),
+        updated_dt: legacyDate(profile.updated),
+        user_lat: currentLocation?.latitude.toString() ?? '',
+        user_lng: currentLocation?.longitude.toString() ?? '',
+        website: work?.website ?? '',
+        weight: matrimony?.weight?.toString() ?? '',
+        work_details: work?.work_details ?? '',
+        matches: null,
+        reminder_birth_date: null,
+        reminder_marriage_date: null,
+        reminder_expire_date: null,
+      },
+    };
   }
 
   private async sendNotification(
@@ -184,8 +344,8 @@ export class AuthService {
       role === Role.LOCAL_ADMIN
         ? { role, local_community_id: communityId }
         : role === Role.SUB_ADMIN
-        ? { role, sub_community_id: communityId }
-        : { role };
+          ? { role, sub_community_id: communityId }
+          : { role };
 
     const users = await this.prisma.user.findMany({
       where,

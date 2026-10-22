@@ -115,6 +115,8 @@ model UserWorkDetail {
   user_id              Int     @unique
   committee_id         Int?
   designation_id       Int?
+  start_date           DateTime?
+  end_date             DateTime?
   business_category_id Int?    @default(0)
   business_address     String?
   business_logo        String?

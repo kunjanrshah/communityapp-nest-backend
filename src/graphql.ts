@@ -491,14 +491,16 @@ export interface UserPersonalDetailDTO {
 export interface UserWorkDetailDTO {
     id: number;
     user_id: number;
-    committee_id: number;
-    designation_id: number;
+    committee_id?: Nullable<number>;
+    designation_id?: Nullable<number>;
     business_category_id?: Nullable<number>;
     business_address?: Nullable<string>;
     business_logo?: Nullable<string>;
     company_name?: Nullable<string>;
     website?: Nullable<string>;
     work_details?: Nullable<string>;
+    start_date?: Nullable<DateTime>;
+    end_date?: Nullable<DateTime>;
 }
 
 export interface UserLocationDTO {

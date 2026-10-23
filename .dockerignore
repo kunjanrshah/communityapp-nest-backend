@@ -3,3 +3,9 @@ dist
 .git
 .env
 docker.env
+.github
+.env.*
+!.env.example
+coverage
+npm-debug.log
+

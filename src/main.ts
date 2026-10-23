@@ -12,7 +12,9 @@ import * as dotenv from 'dotenv';
 // else runs, so the ngrok constants below pick up NGROK_AUTHTOKEN etc. early.
 // ConfigModule also loads this file during bootstrap; dotenv.config() does not
 // override variables that are already set in the process environment.
-dotenv.config({ path: join(process.cwd(), `.env.${process.env.NODE_ENV || 'dev'}`) });
+// Use .env for production, .env.dev for development (default)
+const envFile = process.env.NODE_ENV === 'prod' ? '.env' : `.env.${process.env.NODE_ENV || 'dev'}`;
+dotenv.config({ path: join(process.cwd(), envFile) });
 
 const PORT = Number(process.env.PORT) || 3000;
 const NGROK_ENABLED = (process.env.NGROK_ENABLED || 'false').toLowerCase() === 'true';

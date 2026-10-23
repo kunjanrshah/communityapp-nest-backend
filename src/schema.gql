@@ -184,14 +184,16 @@ scalar DateTime
 type UserWorkDetailDTO {
   id: Int!
   user_id: Int!
-  committee_id: Int!
-  designation_id: Int!
+  committee_id: Int
+  designation_id: Int
   business_category_id: Int
   business_address: String
   business_logo: String
   company_name: String
   website: String
   work_details: String
+  start_date: DateTime
+  end_date: DateTime
 }
 
 type UserLocationDTO {

@@ -20,7 +20,7 @@ import { FirebaseModule } from './firebase/firebase.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true, // Makes the config available globally
-      envFilePath: `.env.${process.env.NODE_ENV || 'dev'}`,
+      envFilePath: process.env.NODE_ENV === 'prod' ? '.env' : `.env.${process.env.NODE_ENV || 'dev'}`,
       load: [dbConfig],
     }),
     DomainModule,

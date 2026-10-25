@@ -13,7 +13,7 @@ services:
 
   nestjs-app:
     # Pulled from GitHub Container Registry (built & published by .github/workflows/build.yml)
-    image: ghcr.io/kunjanrshah/communityapp-nestbackend:latest
+    image: ghcr.io/kunjanrshah/communityapp-nest-backend:latest
     container_name: nestjs-app-prod
     ports:
       - "3000:3000"

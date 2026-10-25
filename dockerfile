@@ -6,18 +6,21 @@ WORKDIR /usr/src/app
 # Install build tools needed by native modules (e.g. bcrypt, sharp, etc.)
 RUN apk add --no-cache python3 make g++
 
+# Enable pnpm via corepack
+RUN corepack enable
+
 # Copy package files first for better layer caching
 COPY package.json pnpm-lock.yaml* ./
 
 # Install ALL dependencies (devDeps are needed for `nest build`)
-RUN npm install
+RUN pnpm install
 
 # Copy source code and build
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 # Prune devDependencies to keep the final image small
-RUN npm prune --production
+RUN pnpm prune --production
 
 # Production stage
 FROM node:20-alpine

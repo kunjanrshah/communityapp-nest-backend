@@ -12,9 +12,8 @@ services:
       - postgres_data_prod:/var/lib/postgresql/data
 
   nestjs-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Pulled from GitHub Container Registry (built & published by .github/workflows/build.yml)
+    image: ghcr.io/kunjanrshah/communityapp-nestbackend:latest
     container_name: nestjs-app-prod
     ports:
       - "3000:3000"
@@ -30,6 +29,7 @@ services:
     depends_on:
       - postgres
     command: node dist/main
+    restart: unless-stopped
 
   pgadmin:
     image: dpage/pgadmin4

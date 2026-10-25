@@ -12,11 +12,20 @@ RUN corepack enable
 # Copy package files first for better layer caching
 COPY package.json pnpm-lock.yaml* ./
 
-# Install ALL dependencies (devDeps are needed for `nest build`)
+# Install ALL dependencies (devDeps are needed for `nest build` and `prisma generate`)
 RUN pnpm install
 
-# Copy source code and build
+# Copy source code (including prisma schema)
 COPY . .
+
+# Generate Prisma Client types from schema.prisma before building.
+# `prisma generate` does NOT connect to the database, but it requires
+# DATABASE_URL to be defined to resolve the datasource. A dummy value is
+# sufficient at build time; the real URL is injected at runtime via .env.
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" \
+    npx prisma generate --schema prisma/schema.prisma
+
+# Build the NestJS application (Prisma Client types now exist)
 RUN pnpm run build
 
 # Prune devDependencies to keep the final image small

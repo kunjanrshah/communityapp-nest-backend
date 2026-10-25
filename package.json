@@ -13,7 +13,7 @@
     "commit": "cz",
     "check-engines": "npx check-node-version --node \">=20.0.0\" --npm \">=8.0.0\"",
     "prebuild": "npm run check-engines",
-    "build": "nest build",
+    "build": "prisma generate && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nodemon --exec ts-node -r tsconfig-paths/register src/main.ts",

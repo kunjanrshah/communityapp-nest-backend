@@ -32,6 +32,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create Firebase service account file
+        run: |
+          # public/ is gitignored (contains the Firebase admin SDK secret key).
+          # Recreate it from a repository secret so it exists in the Docker
+          # build context for the TypeScript import in firebase.service.ts.
+          # Add this secret to your repo: Settings > Secrets and variables >
+          # Actions > FIREBASE_SERVICE_ACCOUNT (paste the full JSON content).
+          mkdir -p public
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > public/firebase-service-account.json
+
       - name: Build and publish Docker image
         uses: docker/build-push-action@v6
         with:

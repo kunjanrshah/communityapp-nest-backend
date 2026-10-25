@@ -39,8 +39,14 @@ jobs:
           # build context for the TypeScript import in firebase.service.ts.
           # Add this secret to your repo: Settings > Secrets and variables >
           # Actions > FIREBASE_SERVICE_ACCOUNT (paste the full JSON content).
+          #
+          # Use a quoted heredoc so the secret is written verbatim (quotes,
+          # newlines and the PEM private key are preserved exactly). `echo`
+          # would strip/mangle them and produce invalid JSON.
           mkdir -p public
-          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > public/firebase-service-account.json
+          cat > public/firebase-service-account.json << 'FIREBASE_SA_EOF'
+          ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_SA_EOF
 
       - name: Build and publish Docker image
         uses: docker/build-push-action@v6

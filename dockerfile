@@ -28,8 +28,10 @@ RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" \
 # Build the NestJS application (Prisma Client types now exist)
 RUN pnpm run build
 
-# Prune devDependencies to keep the final image small
-RUN pnpm prune --production
+# Prune devDependencies to keep the final image small.
+# --ignore-scripts prevents the `prepare` lifecycle (husky install) from
+# running; husky is a devDependency removed by prune and isn't needed in prod.
+RUN pnpm prune --production --ignore-scripts
 
 # Production stage
 FROM node:20-alpine

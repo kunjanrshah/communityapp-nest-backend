@@ -47,4 +47,4 @@ COPY --from=builder /usr/src/app/package.json ./package.json
 EXPOSE 3000
 
 # Start the application
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]

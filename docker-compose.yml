@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: community
+      POSTGRES_DB: community_prod
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
 

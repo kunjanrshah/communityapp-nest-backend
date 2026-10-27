@@ -1,0 +1,12 @@
+services:
+  nestjs-app:
+    image: community-backend:prod
+    build:
+      context: .
+      dockerfile: dockerfile
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: prod
+    ports:
+      - "3000:3000"

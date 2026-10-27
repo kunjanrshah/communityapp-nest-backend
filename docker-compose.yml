@@ -28,7 +28,7 @@ services:
       DB_NAME: community_prod
     depends_on:
       - postgres
-    command: node dist/main
+    command: node dist/src/main
     restart: unless-stopped
 
   pgadmin:

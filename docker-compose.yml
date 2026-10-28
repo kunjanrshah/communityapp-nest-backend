@@ -12,8 +12,10 @@ services:
       - postgres_data_prod:/var/lib/postgresql/data
 
   nestjs-app:
-    # Pulled from GitHub Container Registry (built & published by .github/workflows/build.yml)
-    image: ghcr.io/kunjanrshah/communityapp-nest-backend:latest
+    # Build locally from Dockerfile (compiles TypeScript to dist/)
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: nestjs-app-prod
     ports:
       - "3000:3000"

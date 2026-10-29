@@ -12,10 +12,8 @@ services:
       - postgres_data_prod:/var/lib/postgresql/data
 
   nestjs-app:
-    # Build locally from Dockerfile (compiles TypeScript to dist/)
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Pull pre-built image from GHCR (built locally & pushed by maintainer)
+    image: ghcr.io/kunjanrshah/communityapp-nest-backend:latest
     container_name: nestjs-app-prod
     ports:
       - "3000:3000"

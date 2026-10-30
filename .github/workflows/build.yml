@@ -48,7 +48,33 @@ jobs:
           ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_SA_EOF
 
-      - name: Build and publish Docker image
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          build-args: |
+            NODE_ENV=prod
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          no-cache: true
+          load: true
+
+      - name: Verify dist/src/main.js exists in built image
+        run: |
+          if docker run --rm ${{ env.IMAGE_NAME }}:latest test -f /usr/src/app/dist/src/main.js; then
+            echo "✅ dist/src/main.js found in built image"
+            docker run --rm ${{ env.IMAGE_NAME }}:latest ls -la /usr/src/app/dist/src/main.js
+          else
+            echo "❌ ERROR: dist/src/main.js is missing in the built image!"
+            echo "   The Docker build did not compile TypeScript correctly."
+            exit 1
+          fi
+
+      - name: Publish Docker image to GHCR
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -71,7 +97,15 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            echo "${{ secrets.VPS_ENV_FILE }}" > .env
+            # Write .env from GitHub secret using heredoc (preserves special chars, newlines, quotes)
+            cat > .env << 'ENV_EOF'
+            ${{ secrets.VPS_ENV_FILE }}
+            ENV_EOF
+
+            # Verify .env was written correctly (mask sensitive values in logs)
+            echo "=== .env file contents (sensitive values masked) ==="
+            grep -E "DB_HOST|DB_PORT|DB_USERNAME|DB_NAME|DATABASE_URL" .env || true
+            echo "=================================================="
 
             # Authenticate to GHCR so the VPS can pull the published image.
             # Requires repo secrets: VPS_GHCR_USER (GitHub username) and

@@ -5,11 +5,17 @@ services:
     ports:
       - "5433:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: community_prod
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   nestjs-app:
     # Pull pre-built image from GHCR (built locally & pushed by maintainer)
@@ -23,11 +29,13 @@ services:
       NODE_ENV: prod
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: community_prod
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DATABASE_URL: postgresql://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?schema=public
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     command: node dist/src/main
     restart: unless-stopped
 

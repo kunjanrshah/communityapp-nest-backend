@@ -73,6 +73,11 @@ export class AuthResolver {
 
     if (!user) throw new Error(lookupLabel);
 
+    const destinationEmail = user.email ?? forgotPasswordInput.email;
+    if (!destinationEmail) {
+      throw new Error('No email on file. Please contact support to reset your password.');
+    }
+
     // We CANNOT recover the user's original password because passwords are
     // stored as one-way bcrypt hashes. Instead, generate a brand-new temporary
     // password (6 numeric digits, crypto-secure), store its hash, and email
@@ -82,20 +87,15 @@ export class AuthResolver {
     const temporaryPassword = Array.from({ length: 6 }, () => randomInt(10)).join('');
     const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
-    // Replace the stored password hash with the temporary one.
+    // Send the temporary password in the email (mirrors the legacy CodeIgniter
+    // behaviour of emailing/SMS-ing the plain-text password). Do not change
+    // the account password unless the email provider accepts the message.
+    await this.emailService.sendTemporaryPasswordEmail(destinationEmail, temporaryPassword);
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: { password: hashedPassword, resetToken: null, resetTokenExpiry: null },
     });
-
-    // Send the temporary password in the email (mirrors the legacy CodeIgniter
-    // behaviour of emailing/SMS-ing the plain-text password).
-    const destinationEmail = user.email ?? forgotPasswordInput.email;
-    if (!destinationEmail) {
-      throw new Error('No email on file. Please contact support to reset your password.');
-    }
-
-    await this.emailService.sendTemporaryPasswordEmail(destinationEmail, temporaryPassword);
 
     return resetType === 'mobile'
       ? 'Temporary password sent to your registered email!'

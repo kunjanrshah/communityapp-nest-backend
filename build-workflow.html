@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Actions Build Flowchart</title>
+    <script src="https://unpkg.com/mermaid@10.9.0/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #161b22;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+        }
+        h1 {
+            color: #58a6ff;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .mermaid {
+            background: transparent;
+        }
+        .note {
+            margin-top: 30px;
+            padding: 15px;
+            background: #21262d;
+            border-left: 4px solid #58a6ff;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 GitHub Actions Build & Deploy Flowchart</h1>
+        <div class="mermaid">
+            flowchart TD
+                A[🏁 You push code to GitHub main] --> B[1️⃣ Checkout source code]
+                B --> C[2️⃣ Set up Docker Build tools]
+                C --> D[3️⃣ Log in to GHCR storage locker]
+                D --> E[4️⃣ Create Firebase secret key file]
+                E --> F[5️⃣ BUILD Docker image locally on GitHub]
+
+                F --> G{6️⃣ Does dist/src/main.js exist inside image?}
+
+                G -->|❌ NO| H[🛑 WORKFLOW FAILS<br/>No broken image published<br/>VPS keeps running last good version]
+
+                G -->|✅ YES| I[7️⃣ Publish image to GHCR locker]
+                I --> J[8️⃣ SSH into your VPS]
+                J --> K[9️⃣ Write .env file from secret]
+                K --> L[🔟 Log into GHCR on VPS]
+                L --> M[1️⃣1️⃣ Pull new image]
+                M --> N[1️⃣2️⃣ Force-restart app container]
+                N --> O[✅ App is live on VPS]
+
+                style H fill:#ffcccc,color:#cc0000,stroke:#ff0000,stroke-width:2px
+                style O fill:#ccffcc,color:#006600,stroke:#00aa00,stroke-width:2px
+                style G fill:#fff4dd,color:#856404,stroke:#ffc107,stroke-width:2px
+        </div>
+        <div class="note">
+            <strong>How to save as image:</strong><br>
+            1. Open this HTML file in your browser<br>
+            2. Wait for the flowchart to render<br>
+            3. Right-click on the diagram → "Save image as..." or take a screenshot<br>
+            Or use <a href="https://mermaid.live" target="_blank" style="color: #58a6ff;">Mermaid Live Editor</a> with the <code>.mmd</code> file.
+        </div>
+    </div>
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+    </script>
+</body>
+</html>

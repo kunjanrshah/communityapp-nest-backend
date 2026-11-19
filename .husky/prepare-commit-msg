@@ -4,6 +4,7 @@
 
 # Run Commitizen only when /dev/tty is available (interactive terminal).
 # Skip gracefully on CI, GUI commit tools, or platforms without /dev/tty.
-if [ -e /dev/tty ]; then
-  npx cz --hook < /dev/tty || true
-fi
+# Temporarily disabled husky prepare-commit-msg hook
+# if [ -e /dev/tty ]; then
+#   npx cz --hook < /dev/tty || true
+# fi

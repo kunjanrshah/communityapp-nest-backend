@@ -23,6 +23,14 @@ services:
     container_name: nestjs-app-prod
     ports:
       - "3000:3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.communityapp.rule=Host(`muslimghanchi.samajapp.in`)"
+      - "traefik.http.routers.communityapp.entrypoints=websecure"
+      - "traefik.http.routers.communityapp.tls.certresolver=letsencrypt"
+      - "traefik.http.services.communityapp.loadbalancer.server.port=3000"
+      - "traefik.docker.network=communityapp-nest-backend_default"
+
     env_file:
       - .env
     environment:

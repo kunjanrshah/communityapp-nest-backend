@@ -46,5 +46,6 @@ COPY --from=builder /usr/src/app/package.json ./package.json
 # Expose the application port
 EXPOSE 3000
 
+
 # Start the application
 CMD ["node", "dist/src/main"]
